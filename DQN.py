@@ -10,6 +10,8 @@ import torchvision.models.densenet
 Transition = namedtuple('Transition',
                         ('state', 'action', 'next_state', 'reward'))
 
+magic_number = 128 * 2 * 4 * 4
+
 
 def init_weights(m):
     if type(m) == nn.Linear or type(m) == nn.Conv3d:
@@ -22,27 +24,31 @@ class Mynet(nn.Module):
         super(Mynet, self).__init__()
         assert (observation_space.shape == (210, 160, 3) and action_space.n == 4)
         self.base = nn.Sequential(
-            nn.Conv3d(3, 8, (5, 3, 3), stride=2, padding=2),
-            nn.BatchNorm3d(8),
+            nn.Conv3d(3, 32, (5, 3, 3), stride=2, padding=2),
+            nn.BatchNorm3d(32),
             nn.ReLU(inplace=True),
             nn.MaxPool3d(kernel_size=3, stride=2, padding=1),
-            nn.Conv3d(8, 16, (1, 3, 3), stride=2, padding=2),
-            nn.BatchNorm3d(16),
+            nn.Conv3d(32, 64, (1, 3, 3), stride=2, padding=2),
+            nn.BatchNorm3d(64),
+            nn.ReLU(inplace=True),
+            nn.MaxPool3d(kernel_size=3, stride=2, padding=1),
+            nn.Conv3d(64, 128, (1, 3, 3), stride=2, padding=2),
+            nn.BatchNorm3d(128),
             nn.ReLU(inplace=True),
             nn.MaxPool3d(kernel_size=3, stride=2, padding=1),
         )
 
-        self.V = nn.Sequential(nn.Linear(16 * 2 * 14 * 11, 16 * 2 * 14 * 11), nn.ReLU(inplace=True),
-                               nn.Linear(16 * 2 * 14 * 11, 1))
-        self.A = nn.Sequential(nn.Linear(16 * 2 * 14 * 11, 16 * 2 * 14 * 11), nn.ReLU(inplace=True),
-                               nn.Linear(16 * 2 * 14 * 11, action_space.n))
+        self.V = nn.Sequential(nn.Linear(magic_number, 128), nn.ReLU(inplace=True),
+                               nn.Linear(128, 1))
+        self.A = nn.Sequential(nn.Linear(magic_number, 128), nn.ReLU(inplace=True),
+                               nn.Linear(128, action_space.n))
         self.base.apply(init_weights)
         self.V.apply(init_weights)
         self.A.apply(init_weights)
 
     def forward(self, x):
         l = self.base(x)
-        l = l.view(-1, 16 * 2 * 14 * 11)
+        l = l.view(-1, magic_number)
         V = self.V(l)
         A = self.A(l)
         Q = V + (A - A.mean(dim=1, keepdim=True))

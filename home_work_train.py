@@ -25,7 +25,7 @@ class MyWork:
         self.Q_target.load_state_dict(self.Q_policy.state_dict())
         self.Q_target.eval()
         self.env = env
-        self.pool = DQN.ReplyMemory(25000)
+        self.pool = DQN.ReplyMemory(2500)
         self.gramma = GRAMMA
         self.alpha = ALPHA
         self.epsilon = EPSILON
@@ -83,7 +83,8 @@ class MyWork:
         f = open('log.txt', 'a+')
         opt = torch.optim.Adam(self.Q_policy.parameters())
         for i in range(train_num):
-            self.collect(BATCH_SIZE)
+            if i % 5 == 0:
+                self.collect(BATCH_SIZE)
             data = self.pool.sample(BATCH_SIZE)
             batch = DQN.Transition(*zip(*data))
             non_final_mask = torch.tensor(tuple(map(lambda s: s is not None,
@@ -105,13 +106,13 @@ class MyWork:
             opt.step()
             print(i, loss.item())
             print(i, loss.item(), file=f)
-            # f.write('{},{}'.format(i, loss.item()))
             if i % 20 == 19:
                 self.Q_target.load_state_dict(self.Q_policy.state_dict())
                 self.Q_target.eval()
             if i % 3000 == 0:
                 torch.save(self.Q_policy.state_dict(),
                            path + '{}.pt'.format(i))
+
         torch.save(self.Q_policy.state_dict(),
                    path + 'final.pt')
         torch.save(self.Q_target.state_dict(),
@@ -122,7 +123,10 @@ class MyWork:
 if __name__ == '__main__':
     # print(path)
     Env = MyWork()
-    Env.train(10000000)
+    Env.collect(2000)
+    while True:
+        print(Env.alpha)
+    # Env.train(10000000)
     # f = open('log.txt', 'a+')
     # print(10, 11, file=f)
     # print(10, 11, file=f)
