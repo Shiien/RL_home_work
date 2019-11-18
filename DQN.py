@@ -18,6 +18,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def transfor_o(ob):
     obb = []
+
     for i in ob:
         obb.append(torch.tensor(i.tolist(), dtype=torch.float32).to(device).unsqueeze(0))
     return torch.cat(obb).to(device).unsqueeze(0)
@@ -32,7 +33,7 @@ def init_weights(m):
 class Mynet(nn.Module):
     def __init__(self, observation_space, action_space):
         super(Mynet, self).__init__()
-        assert (observation_space.shape == (210, 160, 3) and action_space.n == 6)
+        assert (observation_space.shape == (210, 160, 3))
         self.base = nn.Sequential(
             nn.Conv2d(4, 32, (3, 3), stride=2, padding=2),
             nn.BatchNorm2d(32),
@@ -53,7 +54,8 @@ class Mynet(nn.Module):
                                nn.Linear(128, 1))
         self.A = nn.Sequential(nn.Linear(magic_number, 128), nn.ReLU(inplace=True), nn.Linear(128, 128),
                                nn.ReLU(inplace=True),
-                               nn.Linear(128, action_space.n))
+                               nn.Linear(128, 2))
+        # 2 is up, 5 is down
         self.base.apply(init_weights)
         self.V.apply(init_weights)
         self.A.apply(init_weights)
@@ -107,31 +109,21 @@ class ImageProcess():
 
         state_gray = cv2.cvtColor(state, cv2.COLOR_BGR2GRAY)
 
-        _, state_binary = cv2.threshold(state_gray, 5, 255, cv2.THRESH_BINARY)
-
-        state_binarySmall = cv2.resize(state_binary, (sWidth, sHeight), interpolation=cv2.INTER_AREA)
-
+        # _, state_binary = cv2.threshold(state_gray, 5, 255, cv2.THRESH_BINARY)
+        # cv2.imshow('aaaa',state_gray)
+        state_binarySmall = cv2.resize(state_gray, (sWidth, sHeight), interpolation=cv2.INTER_AREA)
         cnn_inputImg = state_binarySmall[25:, :]
         cnn_inputImg = cnn_inputImg.reshape((80, 80))
-
+        # cv2.imshow('vvvv',cnn_inputImg)
         return cnn_inputImg
 
-    def ShowImageFromNdarray(sefl, state, p):
-        imgs = np.ndarray(shape=(4, 80, 80))
-
-        for i in range(0, 80):
-            for j in range(0, 80):
-                for k in range(0, 4):
-                    imgs[k][i][j] = state[i][j][k]
-
-        cv2.imshow(str(p + 1), imgs[0])
-        cv2.imshow(str(p + 2), imgs[1])
-        cv2.imshow(str(p + 3), imgs[2])
-        cv2.imshow(str(p + 4), imgs[3])
+    @staticmethod
+    def ShowImageFromNdarray(state, p):
+        cv2.imshow(str(p + 1), state[0])
 
 
 if __name__ == '__main__':
-    env = gym.envs.make("Qbert-v0")
+    env = gym.envs.make("Pongde-v0")
     a = Mynet(env.observation_space, env.action_space)
 
     t = env.action_space
