@@ -61,6 +61,7 @@ class Mynet(nn.Module):
         self.A.apply(init_weights)
 
     def forward(self, x):
+        x = x.permute(0, 3, 1, 2)
         l = self.base(x)
         l = l.view(-1, magic_number)
         V = self.V(l)
@@ -109,7 +110,7 @@ class ImageProcess():
 
         state_gray = cv2.cvtColor(state, cv2.COLOR_BGR2GRAY)
 
-        # _, state_binary = cv2.threshold(state_gray, 5, 255, cv2.THRESH_BINARY)
+        # _, state_binary = cv2.threshold(state_gray, 10, 255, cv2.THRESH_BINARY)
         # cv2.imshow('aaaa',state_gray)
         state_binarySmall = cv2.resize(state_gray, (sWidth, sHeight), interpolation=cv2.INTER_AREA)
         cnn_inputImg = state_binarySmall[25:, :]
@@ -118,13 +119,23 @@ class ImageProcess():
         return cnn_inputImg
 
     @staticmethod
-    def ShowImageFromNdarray(state, p):
-        cv2.imshow(str(p + 1), state[0])
+    def ShowImageFromNdarray(state):
+        # pp = [[[0 for i in range(80)]for j in range(80)] for k in range(4)]
+        # pp = np.ndarray((4, 80, 80))
+        pp = np.zeros((4,80,80),dtype=np.uint8)
+        for i in range(4):
+            for j in range(80):
+                for k in range(80):
+                    pp[i][j][k] = state[j][k][i]
+        cv2.imshow(str(0), pp[0])
+        cv2.imshow(str(1), pp[1])
+        cv2.imshow(str(2), pp[2])
+        cv2.imshow(str(3), pp[3])
 
 
 if __name__ == '__main__':
-    env = gym.envs.make("Pongde-v0")
-    a = Mynet(env.observation_space, env.action_space)
+    env = gym.envs.make("PongDeterministic-v4")
+    a = Mynet(env.observation_space, env.action_space).cuda()
 
     t = env.action_space
     # while True:
@@ -137,7 +148,7 @@ if __name__ == '__main__':
     I = ImageProcess()
     state = env.reset()
     state = I.ColorMat2Binary(state)
-    state_shadow = np.stack((state, state, state, state), axis=0)
-    t = transfor_o(state_shadow)
+    state_shadow = np.stack((state, state, state, state), axis=2)
+    t = transfor_o(state_shadow).cuda()
     c = a(t)
     print(c)

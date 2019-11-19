@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-import torch.optim.rmsprop as RMS
 import torch.nn.functional as F
 import math
 import gym
@@ -60,8 +59,9 @@ class MyWork:
         for i in range(100):
             state = self.env.reset()
             state = self.ImageProcess.ColorMat2Binary(state)
-            state_shadow = np.stack((state, state, state, state), axis=0)
+            state_shadow = np.stack((state, state, state, state), axis=2)
             state_now = transfor_o(state_shadow)
+
             while True:
                 if DEBUG:
                     self.env.render()
@@ -71,12 +71,19 @@ class MyWork:
                 else:
                     do_action = [[5]]
                 observation1, reward, done, _ = self.env.step(do_action)
+                # if done is False:
+                #     observation1, reward, done, _ = self.env.step([[0]])
                 next_state = self.ImageProcess.ColorMat2Binary(observation1)
-                if DEBUG:
-                    cv2.imshow('aaa', next_state)
-                next_state = np.reshape(next_state, (1, 80, 80))
 
-                next_state_shadow = np.append(next_state, state_shadow[:3, :, :], axis=0)
+                next_state = np.reshape(next_state, (80, 80, 1))
+                # if DEBUG:
+                #     cv2.imshow('aaa', next_state)
+                next_state_shadow = np.append(next_state, state_shadow[:, :, :3], axis=2)
+                if DEBUG:
+                    DQN.ImageProcess.ShowImageFromNdarray(next_state_shadow)
+                # if DEBUG:
+                #     # for i in range(4):
+                #     cv2.imshow(str(0), next_state_shadow[:][:][0])
                 # for i in range(4):
                 # cv2.imshow(str(0),observation1)
                 state_next = transfor_o(next_state_shadow)
@@ -86,6 +93,7 @@ class MyWork:
                 self.pool.push(state_now, action,
                                state_next, reward)
                 state_now = state_next
+                state_shadow = next_state_shadow
                 total += 1
                 if done:
                     break
@@ -105,11 +113,11 @@ class MyWork:
         # torch.optim.R
         opt = torch.optim.Adam(self.Q_policy.parameters())
         C = 0
-        self.collect(BATCH_SIZE)
+        self.collect(32)
         for i in range(train_num):
             state = self.env.reset()
             state = self.ImageProcess.ColorMat2Binary(state)
-            state_shadow = np.stack((state, state, state, state), axis=0)
+            state_shadow = np.stack((state, state, state, state), axis=2)
             state_now = transfor_o(state_shadow)
             total_reward = 0
             total_loss = 0
@@ -124,12 +132,14 @@ class MyWork:
                 else:
                     do_action = [[5]]
                 observation1, reward, done, _ = self.env.step(do_action)
+                # if done is False:
+                #     observation1, reward, done, _ = self.env.step([[0]])
                 next_state = self.ImageProcess.ColorMat2Binary(observation1)
                 if DEBUG:
                     cv2.imshow('aaa', next_state)
-                next_state = np.reshape(next_state, (1, 80, 80))
+                next_state = np.reshape(next_state, (80, 80, 1))
 
-                next_state_shadow = np.append(next_state, state_shadow[:3, :, :], axis=0)
+                next_state_shadow = np.append(next_state, state_shadow[:, :, :3], axis=2)
                 state_next = transfor_o(next_state_shadow)
                 reward = reward / 21.0
                 total_reward += reward
@@ -159,8 +169,9 @@ class MyWork:
                 total_loss += loss.item()
                 total_num += 1
                 state_now = state_next
+                state_shadow = next_state_shadow
                 C += 1
-                if C > 1000:
+                if C > 100:
                     self.Q_target.load_state_dict(self.Q_policy.state_dict())
                     self.Q_target.eval()
                     C = 0
@@ -182,6 +193,7 @@ class MyWork:
 
 
 if __name__ == '__main__':
+    print(device)
     # print(path)
     # v = list(range(1, 1000000))
     # p = map(lambda x: EPS_END + (EPS_START - EPS_END) * \
