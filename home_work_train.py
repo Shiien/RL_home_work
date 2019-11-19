@@ -204,8 +204,8 @@ if __name__ == '__main__':
     # plt.show()
     # random.seed(17)
     Env = MyWork()
-    # Env.Q_policy.load_state_dict(torch.load(r'C:\Users\shs\Desktop\RL_home_work\Q_save_model\79_pong_new.pt'))
-    # Env.Q_target.load_state_dict(torch.load(r'C:\Users\shs\Desktop\RL_home_work\Q_save_model\79_pong_new.pt'))
+    Env.Q_policy.load_state_dict(torch.load(r'C:\Users\Shs\Desktop\RL_home_work\Q_save_model\39_pong_new.pt'))
+    Env.Q_target.load_state_dict(torch.load(r'C:\Users\Shs\Desktop\RL_home_work\Q_save_model\39_pong_new.pt'))
     # Env.collect(2000)
     # while True:
     #     print(Env.alpha)
