@@ -21,7 +21,7 @@ if __name__ == '__main__':
     V = DQN.Mynet(env.observation_space, env.action_space)
     # V = DQN.Mynet()
     # with open('./save_model/499.pt', 'r') as f:
-    V.load_state_dict(torch.load(r'C:\Users\Shs\Desktop\RL_home_work\Q_save_model\39_pong_new.pt'))
+    V.load_state_dict(torch.load(r'C:\Users\shs\Desktop\RL_home_work\Q_save_model\899_pong_new.pt', map_location='cpu'))
     V.eval()
     observation = [None for i in range(5)]
     import numpy as np
@@ -36,19 +36,26 @@ if __name__ == '__main__':
     while True:
         env.render()
 
-        print(V(state_now))
+        # print(V(state_now))
         action = V(state_now).max(1)[1].view(1, 1)
-        print(action)
+        # print(action)
+        if action[0][0] == 0:
+            print(V(state_now))
         if action[0][0] == 0:
             action[0][0] = 2
         else:
             action[0][0] = 5
         observation1, reward, done, _ = env.step(action)
-        next_state = np.reshape(I.ColorMat2Binary(observation1), (80, 80,1))
+        next_state = np.reshape(I.ColorMat2Binary(observation1), (80, 80, 1))
         next_state_shadow = np.append(next_state, state_shadow[:, :, :3], axis=2)
         state_next = transfor_o(next_state_shadow)
 
-        reward = torch.tensor([reward], device=device)
+        # reward = torch.tensor([reward], device=device)
+        # total_reward += reward
+        # reward = torch.tensor([reward], device=device)
+        # self.pool.push(state_now, action,
+        #                state_next, reward)
         state_now = state_next
+        state_shadow = next_state_shadow
         if done:
             break

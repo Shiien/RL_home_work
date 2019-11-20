@@ -41,7 +41,7 @@ class MyWork:
         sample = random.random()
         eps_threshold = EPS_END + (EPS_START - EPS_END) * \
                         math.exp(-1. * steps_done / EPS_DECAY)
-        # eps_threshold = max(0.1, eps_threshold)
+        # eps_threshold = max(0.1, eps_threshold).
         steps_done += 1
         if sample > eps_threshold:
             with torch.no_grad():
