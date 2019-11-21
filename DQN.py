@@ -62,11 +62,12 @@ class Mynet(nn.Module):
 
     def forward(self, x):
         x = x.permute(0, 3, 1, 2)
+        # 调换顺序，把多通道从后面放到前面
         l = self.base(x)
         l = l.view(-1, magic_number)
         V = self.V(l)
         A = self.A(l)
-        Q = V + (A - A.mean(dim=1, keepdim=True))
+        Q = V + (A - A.mean(dim=1, keepdim=True))  # dueling DQN
         return Q
 
 
@@ -91,7 +92,7 @@ class ReplyMemory(object):
 
 
 class ImageProcess():
-    def ColorMat2B(self, state):  ##used for the game flappy bird
+    def ColorMat2B(self, state):
         height = 80
         width = 80
         state_gray = cv2.cvtColor(cv2.resize(state, (height, width)), cv2.COLOR_BGR2GRAY)
@@ -101,28 +102,19 @@ class ImageProcess():
         return cnn_inputImage
 
     def ColorMat2Binary(self, state):
-        height = state.shape[0]
-        width = state.shape[1]
-        nchannel = state.shape[2]
-
-        sHeight = int(height * 0.5)
+        # 灰度化外加转化到80*80
+        sHeight = 80
         sWidth = 80
-
         state_gray = cv2.cvtColor(state, cv2.COLOR_BGR2GRAY)
-
-        # _, state_binary = cv2.threshold(state_gray, 10, 255, cv2.THRESH_BINARY)
-        # cv2.imshow('aaaa',state_gray)
         state_binarySmall = cv2.resize(state_gray, (sWidth, sHeight), interpolation=cv2.INTER_AREA)
         cnn_inputImg = state_binarySmall[25:, :]
         cnn_inputImg = cnn_inputImg.reshape((80, 80))
-        # cv2.imshow('vvvv',cnn_inputImg)
         return cnn_inputImg
 
     @staticmethod
     def ShowImageFromNdarray(state):
-        # pp = [[[0 for i in range(80)]for j in range(80)] for k in range(4)]
-        # pp = np.ndarray((4, 80, 80))
-        pp = np.zeros((4,80,80),dtype=np.uint8)
+        # 展示图片
+        pp = np.zeros((4, 80, 80), dtype=np.uint8)
         for i in range(4):
             for j in range(80):
                 for k in range(80):
@@ -138,13 +130,6 @@ if __name__ == '__main__':
     a = Mynet(env.observation_space, env.action_space).cuda()
 
     t = env.action_space
-    # while True:
-    #     env.reset()
-    #     while True:
-    #         env.render()
-    #         observation, reward, done, info = env.step([random.randint(0,3)])
-    #         if done:
-    #             break
     I = ImageProcess()
     state = env.reset()
     state = I.ColorMat2Binary(state)
