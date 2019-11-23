@@ -41,6 +41,9 @@ class AC(nn.Module):
         mu = 2 * self.actor_mu(x)
         sigma = self.actor_sigma(x) + 1e-6
         tmp = normal.Normal(mu, sigma)
+        # if DEBUG:
+        #     action = mu
+        # else:
         action = tmp.rsample()
         action = torch.clamp(action, min=-2, max=2)
         return tmp.log_prob(action), action, tmp.entropy(), self.critic(x)
@@ -55,6 +58,7 @@ def sample(env, net):
     En = []
     R = []
     V = []
+
     for gongjuren in range(300):
         if DEBUG:
             env.render()
@@ -84,12 +88,12 @@ def sample(env, net):
     # discouted_sum_reward = torch.tensor(discouted_sum_reward, dtype=torch.float32).squeeze()
     loss = torch.zeros(1, 1)
     for i in range(len(R)):
-        loss -= (discouted_sum_reward[i]-V[i].item())*Log_p[i]  + 0.001*En[i]
-    loss = loss / len(R)
+        loss -= (discouted_sum_reward[i]-V[i].item())*Log_p[i]
+    # loss = loss / len(R)
     loss1 = torch.zeros(1, 1)
     for i in range(len(R)):
         loss1 += (V[i] - discouted_sum_reward[i]) * (V[i] - discouted_sum_reward[i])
-    loss1 /= len(R)
+    # loss1 /= len(R)
     return loss, reward_sum, loss1
 
 
@@ -112,7 +116,7 @@ def train(env, net, numbers):
         opt.step()
         print(idx, sum_r / 50)
         if idx % 20 == 19:
-            torch.save(net.state_dict(), './policy_{}.pt'.format(idx +320))
+            torch.save(net.state_dict(), './policy_{}.pt'.format(idx +4100))
     env.close()
     torch.save(net.state_dict(), './policy_1.pt')
 
@@ -125,7 +129,7 @@ if __name__ == '__main__':
     env = gym.make(env_name)
     # print(env.action_space,env.observation_space)
     # raise env
-    N.load_state_dict(torch.load(r'C:\Users\lingse\Desktop\新建文件夹\RL_home_work-master\policy_4099.pt'))
+    N.load_state_dict(torch.load(r'C:\Users\lingse\Desktop\新建文件夹\RL_home_work-master\policy_4739.pt'))
     # action_bound = [-env.action_space.high, env.action_space.high]
     # print(action_bound)
     # train(env, N, 10000)
