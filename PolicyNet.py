@@ -51,71 +51,68 @@ DEBUG = False
 
 def sample(env, net):
     state = env.reset()
-    Log_p = torch.zeros((1, 1))
-    en = torch.zeros((1, 1))
+    Log_p = []
+    En = []
     R = []
-    obs = []
-    A = []
-    while True:
+    V = []
+    for gongjuren in range(300):
         if DEBUG:
             env.render()
-        state = torch.tensor(state, dtype=torch.float32).unsqueeze(0)
+        state = np.reshape(state, [1, 2])
+        state = torch.tensor(state, dtype=torch.float32)
         log_p, ac, en, v = net(state)
-        ob, r, done, _ = env.step(ac)
+        V.append(v)
+        Log_p.append(log_p)
+        En.append(en)
+        ob, r, done, _ = env.step([ac.item()])
+        R.append(r)
         state = ob
         if done:
             break
-    env.close()
-    return
+    reward_sum = 0
+    discouted_sum_reward = np.zeros_like(R)
+    # Log_p = torch.tensor(Log_p, dtype=torch.float32)
+    # V = torch.tensor(V, dtype=torch.float32)
+    # R = torch.tensor(R, dtype=torch.float32)
+    # En = torch.tensor(En, dtype=torch.float32)
+
+    for t in reversed(range(0, len(R))):
+        reward_sum = reward_sum * 0.995 + R[t]
+        discouted_sum_reward[t] = float(reward_sum)
+    # discouted_sum_reward -= np.mean(discouted_sum_reward)
+    # discouted_sum_reward /= np.std(discouted_sum_reward)
+    # discouted_sum_reward = torch.tensor(discouted_sum_reward, dtype=torch.float32).squeeze()
+    loss = torch.zeros(1, 1)
+    for i in range(len(R)):
+        loss -= (discouted_sum_reward[i]-V[i].item())*Log_p[i]  + 0.001*En[i]
+    loss = loss / len(R)
+    loss1 = torch.zeros(1, 1)
+    for i in range(len(R)):
+        loss1 += (V[i] - discouted_sum_reward[i]) * (V[i] - discouted_sum_reward[i])
+    loss1 /= len(R)
+    return loss, reward_sum, loss1
 
 
 def train(env, net, numbers):
     opt = torch.optim.Adam(net.parameters())
 
     for idx in range(numbers):
-        S = []
-        A = []
-        R = []
-        EN = []
-        Log_p = []
-        state = env.reset()
         sum_r = 0
-        for gongjuren in range(300):
-            if DEBUG:
-                env.render()
-            state = np.reshape(state, [1, 2])
-            state = torch.tensor(state, dtype=torch.float32)
-            S.append(state)
-            # print(state)
-            log_p, ac, en, v = net(state)
-            # print(ac)
-
-            Log_p.append(log_p)
-            EN.append(en)
-            action = ac.item()
-            ob, r, done, _ = env.step([action])
-            R.append(r)
+        Loss = torch.zeros(1, 1)
+        Loss1 = torch.zeros(1, 1)
+        for gongjuren in range(50):
+            loss, r, loss1 = sample(env, net)
+            Loss += loss
+            Loss1 += loss1
             sum_r += r
-            state = ob
-            if done or sum_r < -200:
-                break
-        reward_sum = 0
-        discouted_sum_reward = np.zeros_like(R)
-        for t in reversed(range(0, len(R))):
-            reward_sum = reward_sum * 0.995 + R[t]
-            discouted_sum_reward[t] = reward_sum
-        discouted_sum_reward -= np.mean(discouted_sum_reward)
-        discouted_sum_reward /= np.std(discouted_sum_reward)
-        # Total_loss = 0
-        loss = torch.zeros(1, 1)
-        for i in range(len(R)):
-            loss -= Log_p[i] * (discouted_sum_reward[i]) + EN[i]
-            # loss = -loss
-            # Total_loss += loss.item()
+        # Loss = torch.cat(Loss)
+        total_loss = (Loss + Loss1) / 50
         opt.zero_grad()
-        loss.backward()
+        total_loss.backward()
         opt.step()
-        print(idx, reward_sum / len(R), )
+        print(idx, sum_r / 50)
+        if idx % 20 == 19:
+            torch.save(net.state_dict(), './policy_{}.pt'.format(idx +320))
     env.close()
     torch.save(net.state_dict(), './policy_1.pt')
 
@@ -128,6 +125,10 @@ if __name__ == '__main__':
     env = gym.make(env_name)
     # print(env.action_space,env.observation_space)
     # raise env
-    action_bound = [-env.action_space.high, env.action_space.high]
-    print(action_bound)
-    train(env, N, 10000)
+    N.load_state_dict(torch.load(r'C:\Users\lingse\Desktop\新建文件夹\RL_home_work-master\policy_4099.pt'))
+    # action_bound = [-env.action_space.high, env.action_space.high]
+    # print(action_bound)
+    # train(env, N, 10000)
+    DEBUG=True
+    sample(env,N)
+    env.close()
