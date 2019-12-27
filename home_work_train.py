@@ -13,6 +13,7 @@ from DQN import transfor_o
 import cv2
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# device = 'cpu'
 steps_done = 0
 
 path = os.path.abspath(os.path.dirname(__file__))
@@ -38,18 +39,20 @@ class MyWork:
     def select_action(self, state):
         global steps_done
         sample = random.random()
-        # 指数化epsilon 开始0.9指数下降到0.1
         eps_threshold = EPS_END + (EPS_START - EPS_END) * \
                         math.exp(-1. * steps_done / EPS_DECAY)
+        # eps_threshold = max(0.1, eps_threshold)
         steps_done += 1
         if sample > eps_threshold:
             with torch.no_grad():
-                return self.Q_policy(state).max(1)[1].view(1, 1)
+                AA = self.Q_policy(state).max(1)[1].view(1, 1)
+                if DEBUG:
+                    print(AA)
+                return AA
         else:
             return torch.tensor([[random.randrange(2)]], device=device, dtype=torch.long)
 
     def collect(self, sample_num):
-        # 最开始初始化的收集数据
         total = 0
         total_reward = 0
         v = 0
@@ -68,15 +71,23 @@ class MyWork:
                 else:
                     do_action = [[5]]
                 observation1, reward, done, _ = self.env.step(do_action)
+                # if done is False:
+                #     observation1, reward, done, _ = self.env.step([[0]])
                 next_state = self.ImageProcess.ColorMat2Binary(observation1)
 
                 next_state = np.reshape(next_state, (80, 80, 1))
-                if DEBUG:
-                    cv2.imshow('aaa', next_state)
+                # if DEBUG:
+                #     cv2.imshow('aaa', next_state)
                 next_state_shadow = np.append(next_state, state_shadow[:, :, :3], axis=2)
                 if DEBUG:
                     DQN.ImageProcess.ShowImageFromNdarray(next_state_shadow)
+                # if DEBUG:
+                #     # for i in range(4):
+                #     cv2.imshow(str(0), next_state_shadow[:][:][0])
+                # for i in range(4):
+                # cv2.imshow(str(0),observation1)
                 state_next = transfor_o(next_state_shadow)
+
                 total_reward += reward
                 reward = torch.tensor([reward], device=device)
                 self.pool.push(state_now, action,
@@ -99,7 +110,7 @@ class MyWork:
 
     def train(self, train_num):
         f = open('log1.txt', 'a+')
-        # 使用Adam优化
+        # torch.optim.R
         opt = torch.optim.Adam(self.Q_policy.parameters())
         C = 0
         self.collect(32)
@@ -115,26 +126,27 @@ class MyWork:
                 if DEBUG:
                     self.env.render()
                 action = self.select_action(state_now)
+                do_action = None
                 if action[0][0] == 0:
                     do_action = [[2]]
                 else:
                     do_action = [[5]]
                 observation1, reward, done, _ = self.env.step(do_action)
+                # if done is False:
+                #     observation1, reward, done, _ = self.env.step([[0]])
                 next_state = self.ImageProcess.ColorMat2Binary(observation1)
                 if DEBUG:
                     cv2.imshow('aaa', next_state)
                 next_state = np.reshape(next_state, (80, 80, 1))
 
                 next_state_shadow = np.append(next_state, state_shadow[:, :, :3], axis=2)
-                # 四桢为一个输入
                 state_next = transfor_o(next_state_shadow)
-                reward = reward / 21.0  # 归一化reward，好像用处不大
+                reward = reward / 21.0
                 total_reward += reward
                 reward = torch.tensor([reward], device=device)
                 self.pool.push(state_now, action,
                                state_next, reward)
 
-                # 经验池抽一批
                 data = self.pool.sample(BATCH_SIZE)
                 batch = DQN.Transition(*zip(*data))
                 non_final_mask = torch.tensor(tuple(map(lambda s: s is not None,
@@ -152,7 +164,7 @@ class MyWork:
                 opt.zero_grad()
                 loss.backward()
                 for param in self.Q_policy.parameters():
-                    param.grad.data.clamp_(-1, 1)  # 梯度裁剪
+                    param.grad.data.clamp_(-1, 1)
                 opt.step()
                 total_loss += loss.item()
                 total_num += 1
@@ -160,19 +172,18 @@ class MyWork:
                 state_shadow = next_state_shadow
                 C += 1
                 if C > 100:
-                    # 100次更新以后拷贝网络的值
                     self.Q_target.load_state_dict(self.Q_policy.state_dict())
                     self.Q_target.eval()
                     C = 0
                 if done:
                     break
-            print(i, total_reward)
-            print(i, total_loss / total_num)
-            print(i, total_loss / total_num, file=f)  # 记录损失，以后有需要可以画图
+            print(i+200, total_reward)
+            print(i+200, total_loss / total_num)
+            print(i+200, total_loss / total_num, file=f)
 
             if i % 10 == 9:
                 torch.save(self.Q_policy.state_dict(),
-                           path + '{}_pong_new.pt'.format(i))
+                           path + '{}_pong_new.pt'.format(i+200))
 
         torch.save(self.Q_policy.state_dict(),
                    path + 'final.pt')
@@ -183,5 +194,23 @@ class MyWork:
 
 if __name__ == '__main__':
     print(device)
+    # print(path)
+    # v = list(range(1, 1000000))
+    # p = map(lambda x: EPS_END + (EPS_START - EPS_END) * \
+    #                   math.exp(-1. * x / EPS_DECAY), v)
+    # p=list(p)
+    # import matplotlib.pyplot as plt
+    # plt.plot(v,p)
+    # plt.show()
+    # random.seed(17)
     Env = MyWork()
+    Env.Q_policy.load_state_dict(torch.load(r'C:\Users\lingse\Desktop\新建文件夹\RL_home_work-master\Q_save_model\199_pong_new.pt'))
+    Env.Q_target.load_state_dict(torch.load(r'C:\Users\lingse\Desktop\新建文件夹\RL_home_work-master\Q_save_model\199_pong_new.pt'))
+    # Env.collect(2000)
+    # while True:
+    #     print(Env.alpha)
     Env.train(40000)
+    # f = open('log.txt', 'a+')
+    # print(10, 11, file=f)
+    # print(10, 11, file=f)
+    # print(10, 11, file=f)
