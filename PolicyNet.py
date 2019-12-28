@@ -129,7 +129,7 @@ if __name__ == '__main__':
     env = gym.make(env_name)
     # print(env.action_space,env.observation_space)
     # raise env
-    N.load_state_dict(torch.load(r'C:\Users\lingse\Desktop\新建文件夹\RL_home_work-master\policy_4739.pt'))
+    N.load_state_dict(torch.load(r'C:\Users\93569\Desktop\RL_home_work\policy_4099.pt'))
     # action_bound = [-env.action_space.high, env.action_space.high]
     # print(action_bound)
     # train(env, N, 10000)
