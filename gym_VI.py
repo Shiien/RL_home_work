@@ -40,7 +40,6 @@ class Value:
         else:
             S = observation
         A = np.argmax(self.Q[S])
-        # print(A)
 
         return Value.A_to_action(A)
 
@@ -75,25 +74,20 @@ class Value:
                 else:
                     self.Q[o1, a] = self.Q[o1, a] + self.alpha * (
                             r + self.beta * self.Q[o2, Value.action_to_A(self.pick_action(o2))] - self.Q[o1, a])
-            # print(self.Q[o1,a])
 
     @staticmethod
     def observation_to_S(observation):
         p = int((observation[0] + 1) / (1 / lidu))
-        # print(p)
-        # v = int(observation[1] * lidu) + lidu
         v = int((observation[1] + 1) / (1 / lidu))
         return p * 2 * lidu + v
 
     @staticmethod
     def A_to_action(A):
         return [A * (1 / 2 * lidu) - 1 + random.random() / lidu]
-        # return [(A - lidu) / lidu + random.random() / lidu]
 
     @staticmethod
     def action_to_A(action):
         return int((action[0] + 1) / (1 / 2 * lidu))
-        # return int(action[0] * lidu + lidu)
 
     def step(self):
         self.epsilon *= 0.95
@@ -115,9 +109,9 @@ class Value:
                     self.reset_memory()
                 if done:
                     break
-            self.update()
-            self.reset_memory()
-            self.step()
+                self.update()
+                self.reset_memory()
+                self.step()
 
     def save_Q(self):
         self.env.close()
@@ -125,8 +119,8 @@ class Value:
         with open('./save1.json', 'w') as f:
             json.dump(self.Q.tolist(), f)
 
+if __name__ =='__main__':
+    N = Value(gym.make("MountainCarContinuous-v0"), policy='MC')
+    N.train(1000)
 
-N = Value(gym.make("MountainCarContinuous-v0"), policy='MC')
-N.train(1)
-
-N.save_Q()
+# N.save_Q()
